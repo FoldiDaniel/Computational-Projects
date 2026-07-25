@@ -5,8 +5,6 @@ from matplotlib.widgets import Button, Slider
 
 
 
-# TODO: hide annotations when restarting
-
 N = 5  # Number of bodies in the simulation
 SOFTENING = 0.2  # Softening factor to avoid huge jumps in acceleration when bodies are very close
 class Vector:
@@ -63,7 +61,7 @@ class Body:
         self.position_history = [self.position]
 
     def get_size(self):
-        return self.mass * 5  # Scale factor for visualization
+        return self.mass * 8  # Scale factor for visualization
 
 
 
@@ -116,7 +114,6 @@ initial_x = [body.position.x for body in bodies]
 initial_y = [body.position.y for body in bodies]
 masses = [body.mass for body in bodies]
 
-# Scale sizes (mass * 3 looks good for these numbers)
 sizes = [body.get_size() for body in bodies]
 body_scatter = ax.scatter(initial_x, initial_y, s=sizes, c=masses, cmap='plasma', zorder=5)
 
@@ -141,6 +138,7 @@ def update_annotation():
     else:
         arrow_an.set_visible(False)
         info_an.set_visible(False)
+        
 
 def hide_annotation():
     arrow_an.set_visible(False)
@@ -212,16 +210,21 @@ def toggle_pause(event):
 def restart(event):
     global bodies
     global focused_body
+    global is_paused
+
     for body in bodies:
         body.reset()
-    
+    focused_body = None
     # Clear the visible plot data so it doesn't draw a massive straight line 
     # from the old positions back to the start!
     for orbit_plot in orbit_plots:
         orbit_plot.set_data([], [])
     body_scatter.set_offsets([])
-    focused_body = None
-    fig.canvas.draw_idle()
+
+    if is_paused:
+        toggle_pause(event)
+    else:
+        fig.canvas.draw_idle()
 
 def new_start(event):
     global bodies
