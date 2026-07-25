@@ -1,9 +1,12 @@
+from collections import deque
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 from matplotlib.widgets import Button, Slider
 
-
+# TODO: Add a way to change the number of bodies in the simulation dynamically
+# TODO: change ui
 
 N = 5  # Number of bodies in the simulation
 SOFTENING = 0.2  # Softening factor to avoid huge jumps in acceleration when bodies are very close
@@ -47,7 +50,7 @@ class Body:
         self.initial_velocity = velocity
         self.velocity = velocity
         self.acceleration = acceleration
-        self.position_history: list[Vector] = [self.position]
+        self.position_history: deque[Vector] = deque([self.position], maxlen=500)
 
     def update(self, dt: float):
         self.velocity = self.velocity + self.acceleration * dt
@@ -58,7 +61,7 @@ class Body:
         self.position = self.initial_position
         self.velocity = self.initial_velocity
         self.acceleration = Vector(0, 0)
-        self.position_history = [self.position]
+        self.position_history = deque([self.position], maxlen=500)
 
     def get_size(self):
         return self.mass * 8  # Scale factor for visualization
@@ -69,15 +72,16 @@ class Body:
 def update_accelerations(bodies: list[Body]):
     for i in range(len(bodies)):
         bodies[i].acceleration = Vector(0, 0)  # Reset acceleration
-        for j in range(len(bodies)):
-            if i != j:
-                r_vector = bodies[j].position - bodies[i].position
-                distance = r_vector.magnitude()
-                if distance > 0:
-                    force_magnitude = (bodies[i].mass * bodies[j].mass) / (distance ** 2 + SOFTENING ** 2)
-                    force_direction = r_vector.normalize()
-                    force = force_direction * force_magnitude
-                    bodies[i].acceleration += (force / bodies[i].mass)
+    for i in range(len(bodies)):
+        for j in range(i+1, len(bodies)):
+            r_vector = bodies[j].position - bodies[i].position
+            distance = r_vector.magnitude()
+            if distance > 0:
+                force_magnitude = (bodies[i].mass * bodies[j].mass) / (distance ** 2 + SOFTENING ** 2)
+                force_direction = r_vector.normalize()
+                force = force_direction * force_magnitude
+                bodies[i].acceleration += (force / bodies[i].mass)
+                bodies[j].acceleration -= (force / bodies[j].mass)  # Newton's third law
 
 def update_positions(bodies: list[Body], dt: float):
     for body in bodies:
@@ -128,9 +132,10 @@ def update_annotation():
     if focused_body is not None:
         arrow_an.set_position((focused_body.position.x, focused_body.position.y))
         mag= focused_body.acceleration.magnitude()
-        scale = 5 / mag if (mag < 0.01) else (500 if mag < 0.1 else 50 / mag)
-        arrow_an.xy = (focused_body.position.x + (focused_body.acceleration.x * scale), focused_body.position.y + (focused_body.acceleration.y * scale)) 
-        arrow_an.set_visible(True)
+        if mag != 0:
+            scale = 5 / mag if (mag < 0.01) else (500 if mag < 0.1 else 50 / mag)
+            arrow_an.xy = (focused_body.position.x + (focused_body.acceleration.x * scale), focused_body.position.y + (focused_body.acceleration.y * scale)) 
+            arrow_an.set_visible(True)
 
         info_an.xy = (focused_body.position.x, focused_body.position.y)
         info_an.set_text(f"Mass: {focused_body.mass:.2f}\nVelocity: ({10*focused_body.velocity.x:.3f}, {10*focused_body.velocity.y:.3f})\nAcceleration: ({focused_body.acceleration.x:.3f}, {focused_body.acceleration.y:.3f})\nmag: {focused_body.acceleration.magnitude():.3f}")
