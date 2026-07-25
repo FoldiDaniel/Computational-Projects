@@ -6,7 +6,6 @@ from matplotlib.widgets import Button, Slider
 
 
 # TODO: hide annotations when restarting
-# draw vector arrow ontop of bodies
 
 N = 5  # Number of bodies in the simulation
 SOFTENING = 0.2  # Softening factor to avoid huge jumps in acceleration when bodies are very close
@@ -152,15 +151,25 @@ ax_pause = plt.axes([0.55, 0.05, 0.15, 0.075])
 ax_restart = plt.axes([0.72, 0.05, 0.15, 0.075])
 ax_new = plt.axes([0.15, 0.05, 0.15, 0.075])
 
-ax_slider = plt.axes([0.15, 0.15, 0.72, 0.03])
+ax_slider = plt.axes([0.15, 0.15, 0.7, 0.02], facecolor='#1e293b')
 dt_slider = Slider(
     ax=ax_slider,
     label='Time Step (dt)',
     valmin=0.01,
     valmax=1,
     valstep=0.01,
-    valinit=0.1
+    valinit=0.1,
+    valfmt='%1.2f s',      # Displays as "0.05 s" instead of raw floats
+    color='#3b82f6',       # Blue accent color for the active bar
+    initcolor='none'       # Hides the red default initial marker line
 )
+
+# Customize text colors to match a dark theme
+dt_slider.label.set_color('#f8fafc')
+dt_slider.valtext.set_color('#3b82f6')
+dt_slider.valtext.set_fontweight('bold')
+
+
 
 btn_pause = Button(ax_pause, 'Pause')
 btn_restart = Button(ax_restart, 'Restart')
@@ -184,7 +193,7 @@ def update(frame):
 
 
 
-animation = FuncAnimation(fig, update, frames=200, interval=50, blit=True)
+animation = FuncAnimation(fig, update, frames=200, interval=50, blit=False)
 
 is_paused = False
 
