@@ -1,15 +1,18 @@
 from collections import deque
-
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 from matplotlib.widgets import Button, Slider
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 # TODO: Add a way to change the number of bodies in the simulation dynamically
-# TODO: change ui
 
-N = 5  # Number of bodies in the simulation
-SOFTENING = 0.2  # Softening factor to avoid huge jumps in acceleration when bodies are very close
+N = 10  # Number of bodies in the simulation
+SOFTENING = 0.15  # Softening factor to avoid huge jumps in acceleration when bodies are very close
+MAX_HISTORY_LENGTH = 500  # Maximum number of positions to keep in history for drawing orbits
+
+plt.style.use('dark_background')
 class Vector:
 
     def __init__(self, x, y):
@@ -50,7 +53,8 @@ class Body:
         self.initial_velocity = velocity
         self.velocity = velocity
         self.acceleration = acceleration
-        self.position_history: deque[Vector] = deque([self.position], maxlen=500)
+        self.position_history: deque[Vector] = deque([self.position], maxlen=MAX_HISTORY_LENGTH)
+        self.color = "white" # Will be set during generation
 
     def update(self, dt: float):
         self.velocity = self.velocity + self.acceleration * dt
@@ -90,6 +94,10 @@ def update_positions(bodies: list[Body], dt: float):
 
 bodies = []
 focused_body: Body = None
+orbit_plots = []
+
+cmap = cm.get_cmap('plasma')
+norm = mcolors.Normalize(vmin=2.5, vmax=20)
 
 # generate random bodies
 def generate_random_bodies(n):
@@ -97,45 +105,62 @@ def generate_random_bodies(n):
     for i in range(n):
         mass = np.random.uniform(5, 20)
         position = Vector(np.random.uniform(-50, 50), np.random.uniform(-50, 50))
-        velocity = Vector(np.random.uniform(-1, 1), np.random.uniform(-1, 1))
+        # Set initial velocity to create a circular orbit around the origin
+        velocity = Vector(-position.y * 0.04, position.x * 0.04) 
         acceleration = Vector(0, 0)
         body = Body(mass, position, velocity, acceleration)
+        body.color = cmap(norm(mass))
         bodies.append(body)
 
 generate_random_bodies(N)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(facecolor='#0f172a')
 
 # customize the layout 
 # plt.subplots_adjust(bottom=0.2)
+ax.set_facecolor('#0f172a')
 ax.axes.set_axis_off() 
+fig.subplots_adjust(bottom=0.25) # room for ui elements
 
 
-orbit_plots = [ax.plot([], [])[0] for _ in bodies]
+for body in bodies:
+    plot, = ax.plot([], [], color=body.color, alpha=0.45, linewidth=1.5, zorder=2)
+    orbit_plots.append(plot)
 
 
 initial_x = [body.position.x for body in bodies]
 initial_y = [body.position.y for body in bodies]
-masses = [body.mass for body in bodies]
 
 sizes = [body.get_size() for body in bodies]
-body_scatter = ax.scatter(initial_x, initial_y, s=sizes, c=masses, cmap='plasma', zorder=5)
+colors = [body.color for body in bodies]
 
-arrow_an = ax.annotate("", xy=(0, 0), xytext=(0, 0), color="red", arrowprops=dict(arrowstyle="->", color='red'), visible=False)
-info_an = ax.annotate("", xy=(0, 0), xytext=(10, 10), textcoords="offset points", fontsize=8, color="red", visible=False)
+# Layer 1: The Glow (Large, highly transparent)
+glow_scatter = ax.scatter(initial_x, initial_y, s=[s*6 for s in sizes], c=colors, alpha=0.15, zorder=3, edgecolors='none')
+# Layer 2: The Core (Small, solid)
+body_scatter = ax.scatter(initial_x, initial_y, s=sizes, c=colors, zorder=4, edgecolors='white', linewidths=0.5)
+
+arrow_an = ax.annotate("", xy=(0, 0), xytext=(0, 0), arrowprops=dict(arrowstyle="->", color='#38bdf8', lw=2), visible=False, zorder=10)
+info_an = ax.annotate("", xy=(0, 0), xytext=(10, 10), textcoords="offset points", fontsize=9, color="#f8fafc", 
+                      bbox=dict(boxstyle="round,pad=0.4", fc="#1e293b", ec="#334155", alpha=0.8), visible=False, zorder=10)
+
 
 ax.set_xlim(-100, 100)
 ax.set_ylim(-100, 100)
-ax.set_title("N-Body Simulation")
+fig.suptitle("N-Body Simulation", color="#f8fafc", fontsize=14, fontweight='bold', y=0.95)
+# ax.set_title("N-Body Simulation")
 
 def update_annotation():
     if focused_body is not None:
         arrow_an.set_position((focused_body.position.x, focused_body.position.y))
         mag= focused_body.acceleration.magnitude()
-        if mag != 0:
-            scale = 5 / mag if (mag < 0.01) else (500 if mag < 0.1 else 50 / mag)
-            arrow_an.xy = (focused_body.position.x + (focused_body.acceleration.x * scale), focused_body.position.y + (focused_body.acceleration.y * scale)) 
-            arrow_an.set_visible(True)
+
+        visual_length = 25*(mag/(mag + 0.04))  # Scaling: max * (mag/(mag + k)) to keep it bounded
+        acc_dir = focused_body.acceleration.normalize()
+        arrow_an.xy = (
+            focused_body.position.x + (acc_dir.x * visual_length), 
+            focused_body.position.y + (acc_dir.y * visual_length)
+        )
+        arrow_an.set_visible(True)
 
         info_an.xy = (focused_body.position.x, focused_body.position.y)
         info_an.set_text(f"Mass: {focused_body.mass:.2f}\nVelocity: ({10*focused_body.velocity.x:.3f}, {10*focused_body.velocity.y:.3f})\nAcceleration: ({focused_body.acceleration.x:.3f}, {focused_body.acceleration.y:.3f})\nmag: {focused_body.acceleration.magnitude():.3f}")
@@ -150,33 +175,30 @@ def hide_annotation():
     info_an.set_visible(False)
 
 
-ax_pause = plt.axes([0.55, 0.05, 0.15, 0.075])
-ax_restart = plt.axes([0.72, 0.05, 0.15, 0.075])
-ax_new = plt.axes([0.15, 0.05, 0.15, 0.075])
-
-ax_slider = plt.axes([0.15, 0.15, 0.7, 0.02], facecolor='#1e293b')
+ax_slider = plt.axes([0.15, 0.12, 0.7, 0.02], facecolor='#1e293b')
 dt_slider = Slider(
-    ax=ax_slider,
-    label='Time Step (dt)',
-    valmin=0.01,
-    valmax=1,
-    valstep=0.01,
-    valinit=0.1,
-    valfmt='%1.2f s',      # Displays as "0.05 s" instead of raw floats
-    color='#3b82f6',       # Blue accent color for the active bar
-    initcolor='none'       # Hides the red default initial marker line
+    ax=ax_slider, label='Time Step (dt)', valmin=0.01, valmax=1, valstep=0.01, valinit=0.1,
+    valfmt='%1.2f', color='#3b82f6', initcolor='none'
 )
 
 # Customize text colors to match a dark theme
-dt_slider.label.set_color('#f8fafc')
-dt_slider.valtext.set_color('#3b82f6')
+dt_slider.label.set_color('#94a3b8')
+dt_slider.valtext.set_color('#38bdf8')
 dt_slider.valtext.set_fontweight('bold')
 
+ax_new = plt.axes([0.15, 0.04, 0.14, 0.05])
+ax_pause = plt.axes([0.34, 0.04, 0.14, 0.05])
+ax_restart = plt.axes([0.52, 0.04, 0.14, 0.05])
+ax_exit = plt.axes([0.71, 0.04, 0.14, 0.05])
 
+btn_new = Button(ax_new, 'Generate', color='#1e293b', hovercolor='#334155')
+btn_pause = Button(ax_pause, 'Pause', color='#1e293b', hovercolor='#334155')
+btn_restart = Button(ax_restart, 'Restart', color='#1e293b', hovercolor='#334155')
+btn_exit = Button(ax_exit, 'Exit', color='#7f1d1d', hovercolor='#991b1b')
 
-btn_pause = Button(ax_pause, 'Pause')
-btn_restart = Button(ax_restart, 'Restart')
-btn_new = Button(ax_new, 'New')
+for btn in [btn_new, btn_pause, btn_restart, btn_exit]:
+    btn.label.set_color('#f8fafc')
+    btn.label.set_fontweight('bold')
 
 def update(frame):
     current_dt = dt_slider.val  # Adjust time step based on slider value
@@ -185,6 +207,7 @@ def update(frame):
 
     coords = [[body.position.x, body.position.y] for body in bodies]
     body_scatter.set_offsets(coords)
+    glow_scatter.set_offsets(coords)
 
     for i, orbit_plot in enumerate(orbit_plots):
         orbit_plot.set_data([v.x for v in bodies[i].position_history], [v.y for v in bodies[i].position_history])
@@ -192,7 +215,7 @@ def update(frame):
     update_annotation()
     
 
-    return  *orbit_plots, body_scatter, arrow_an, info_an
+    return  *orbit_plots, body_scatter, glow_scatter, arrow_an, info_an
 
 
 
@@ -224,7 +247,6 @@ def restart(event):
     # from the old positions back to the start!
     for orbit_plot in orbit_plots:
         orbit_plot.set_data([], [])
-    body_scatter.set_offsets([])
 
     if is_paused:
         toggle_pause(event)
@@ -232,15 +254,20 @@ def restart(event):
         fig.canvas.draw_idle()
 
 def new_start(event):
-    global bodies
+    global bodies, orbit_plots
     generate_random_bodies(N)
-    new_masses = [body.mass for body in bodies]
+
     new_sizes = [body.get_size() for body in bodies]
+    new_colors = [body.color for body in bodies]
+
     body_scatter.set_sizes(new_sizes)
-    body_scatter.set_array(np.array(new_masses))
-    #Update the colormap limits so the colors scale correctly to the new min/max mass
-    if new_masses:
-        body_scatter.set_clim(vmin=min(new_masses), vmax=max(new_masses))
+    body_scatter.set_color(new_colors)
+    glow_scatter.set_sizes([s*6 for s in new_sizes])
+    glow_scatter.set_color(new_colors)
+
+    for i, body in enumerate(bodies):
+        orbit_plots[i].set_color(body.color)
+
     restart(event)  # Reset the simulation after generating new bodies
 
 def on_click(event):
@@ -254,14 +281,22 @@ def on_click(event):
             fig.canvas.draw_idle()
             return
         
+def exit_app(event):
+    plt.close('all')
+
 
 # Bind the button clicks to our functions
 btn_pause.on_clicked(toggle_pause)
 btn_restart.on_clicked(restart)
 btn_new.on_clicked(new_start)
+btn_exit.on_clicked(exit_app)
 fig.canvas.mpl_connect('button_press_event', on_click)
 
-mng = plt.get_current_fig_manager()
-mng .full_screen_toggle()
+try:
+    mng = plt.get_current_fig_manager()
+    mng.full_screen_toggle()
+except:
+    pass # Fails if full screen is not supported
+
 plt.show()
 
