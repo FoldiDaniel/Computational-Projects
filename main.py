@@ -2,13 +2,11 @@ from collections import deque
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
-from matplotlib.widgets import Button, Slider
+from matplotlib.widgets import Button, Slider, TextBox
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
-# TODO: Add a way to change the number of bodies in the simulation dynamically
-
-N = 10  # Number of bodies in the simulation
+N = 10  # Default number of bodies in the simulation
 SOFTENING = 0.15  # Softening factor to avoid huge jumps in acceleration when bodies are very close
 MAX_HISTORY_LENGTH = 500  # Maximum number of positions to keep in history for drawing orbits
 
@@ -42,6 +40,8 @@ class Vector:
     
     def distance_to(self, other):
         return (self - other).magnitude()
+
+
 
 class Body:
     
@@ -112,6 +112,14 @@ def generate_random_bodies(n):
         body.color = cmap(norm(mass))
         bodies.append(body)
 
+def generate_orbit_plots():
+    for plot in orbit_plots:
+        plot.remove()  # Remove the old plot from the axes
+    orbit_plots.clear()
+    for body in bodies:
+        plot, = ax.plot([], [], color=body.color, alpha=0.45, linewidth=1.5, zorder=2)
+        orbit_plots.append(plot)
+
 generate_random_bodies(N)
 
 fig, ax = plt.subplots(facecolor='#0f172a')
@@ -123,10 +131,7 @@ ax.axes.set_axis_off()
 fig.subplots_adjust(bottom=0.25) # room for ui elements
 
 
-for body in bodies:
-    plot, = ax.plot([], [], color=body.color, alpha=0.45, linewidth=1.5, zorder=2)
-    orbit_plots.append(plot)
-
+generate_orbit_plots()
 
 initial_x = [body.position.x for body in bodies]
 initial_y = [body.position.y for body in bodies]
@@ -174,8 +179,14 @@ def hide_annotation():
     arrow_an.set_visible(False)
     info_an.set_visible(False)
 
+ax_n_box = plt.axes([0.15, 0.03, 0.1, 0.04])
+n_textbox = TextBox(ax_n_box, 'Num Bodies (N): ', initial=str(N), color='#1e293b', hovercolor='#334155')
+n_textbox.label.set_color("#181b21")
+n_textbox.label.set_fontweight('bold')
+n_textbox.text_disp.set_color('#a78bfa')
+n_textbox.text_disp.set_fontweight('bold')
 
-ax_slider = plt.axes([0.15, 0.12, 0.7, 0.02], facecolor='#1e293b')
+ax_slider = plt.axes([0.15, 0.11, 0.7, 0.02], facecolor='#1e293b')
 dt_slider = Slider(
     ax=ax_slider, label='Time Step (dt)', valmin=0.01, valmax=1, valstep=0.01, valinit=0.1,
     valfmt='%1.2f', color='#3b82f6', initcolor='none'
@@ -186,10 +197,10 @@ dt_slider.label.set_color('#94a3b8')
 dt_slider.valtext.set_color('#38bdf8')
 dt_slider.valtext.set_fontweight('bold')
 
-ax_new = plt.axes([0.15, 0.04, 0.14, 0.05])
-ax_pause = plt.axes([0.34, 0.04, 0.14, 0.05])
-ax_restart = plt.axes([0.52, 0.04, 0.14, 0.05])
-ax_exit = plt.axes([0.71, 0.04, 0.14, 0.05])
+ax_new = plt.axes([0.30, 0.03, 0.1, 0.04])
+ax_pause = plt.axes([0.45, 0.03, 0.1, 0.04])
+ax_restart = plt.axes([0.60, 0.03, 0.1, 0.04])
+ax_exit = plt.axes([0.75, 0.03, 0.1, 0.04])
 
 btn_new = Button(ax_new, 'Generate', color='#1e293b', hovercolor='#334155')
 btn_pause = Button(ax_pause, 'Pause', color='#1e293b', hovercolor='#334155')
@@ -255,7 +266,21 @@ def restart(event):
 
 def new_start(event):
     global bodies, orbit_plots
-    generate_random_bodies(N)
+
+    try:
+        # Try to convert user input to an integer
+        n_requested = int(n_textbox.text)
+    except ValueError:
+        # If they typed letters or left it blank, default to 10
+        n_requested = 10 
+
+    # Ensure the number of bodies is within a reasonable range
+    n_requested = max(2, min(n_requested, 200))
+    n_textbox.set_val(str(n_requested))
+    
+    generate_random_bodies(n_requested)
+
+    generate_orbit_plots()  # Regenerate orbit plots for the new bodies
 
     new_sizes = [body.get_size() for body in bodies]
     new_colors = [body.color for body in bodies]
