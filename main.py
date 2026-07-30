@@ -6,6 +6,12 @@ from matplotlib.widgets import Button, Slider, TextBox
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
+# Potential improvements:
+# 1. implement rk4 for better accuracy in the simulation
+# 2. implement a more sophisticated method for generating initial velocities to create more interesting orbits
+# 3. load body positions and velocities from a file to allow for more complex initial conditions (e.g., a galaxy simulation)
+
+
 N = 10  # Default number of bodies in the simulation
 SOFTENING = 0.15  # Softening factor to avoid huge jumps in acceleration when bodies are very close
 MAX_HISTORY_LENGTH = 500  # Maximum number of positions to keep in history for drawing orbits
@@ -168,7 +174,7 @@ def update_annotation():
         arrow_an.set_visible(True)
 
         info_an.xy = (focused_body.position.x, focused_body.position.y)
-        info_an.set_text(f"Mass: {focused_body.mass:.2f}\nVelocity: ({10*focused_body.velocity.x:.3f}, {10*focused_body.velocity.y:.3f})\nAcceleration: ({focused_body.acceleration.x:.3f}, {focused_body.acceleration.y:.3f})\nmag: {focused_body.acceleration.magnitude():.3f}")
+        info_an.set_text(f"Mass: {focused_body.mass:.2f}\nVelocity: ({10*focused_body.velocity.x:.3f}, {10*focused_body.velocity.y:.3f})")
         info_an.set_visible(True)
     else:
         arrow_an.set_visible(False)
@@ -188,7 +194,7 @@ n_textbox.text_disp.set_fontweight('bold')
 
 ax_slider = plt.axes([0.15, 0.11, 0.7, 0.02], facecolor='#1e293b')
 dt_slider = Slider(
-    ax=ax_slider, label='Time Step (dt)', valmin=0.01, valmax=1, valstep=0.01, valinit=0.1,
+    ax=ax_slider, label='Time Step (dt)', valmin=0.01, valmax=1, valstep=0.01, valinit=0.05,
     valfmt='%1.2f', color='#3b82f6', initcolor='none'
 )
 
