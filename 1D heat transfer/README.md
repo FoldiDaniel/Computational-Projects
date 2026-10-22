@@ -37,4 +37,5 @@ $$ r = \frac{\alpha \Delta t}{\Delta x^2} $$
 
 ### Handling Insulated Boundaries (Neumann)
 When a boundary is set to "Insulated", the temperature gradient must be zero ($\frac{\partial u}{\partial x} = 0$). This is handled algorithmically by introducing a "ghost node" outside the domain (e.g., $u_{-1} = u_1$). Subbing this into the Crank-Nicolson stencil dynamically alters the tridiagonal matrix to reflect zero heat flux at the boundary:
+
 $$ (2 + 2r)u_0^{n+1} - 2ru_1^{n+1} = (2 - 2r)u_0^n + 2ru_1^n $$
