@@ -4,7 +4,12 @@ An interactive, real-time physics simulation of 1D thermal diffusion. This proje
 
 It features a custom-built GUI that allows users to manipulate boundary conditions, material properties, and initial temperatures on the fly to observe how heat propagates through different mediums over time.
 
-how xca
+
+<img width="1194" height="668" alt="heat" src="https://github.com/user-attachments/assets/c3d1ccb8-8815-4213-922a-7a6088f2f199" />
+Real-time 1D heat diffusion. The Crank-Nicolson solver updates the spatial temperature profile and thermal map dynamically as time progresses.
+
+<img width="1200" height="600" alt="stable" src="https://github.com/user-attachments/assets/abedf50c-8bed-44b7-bb36-07b157c9e2da" />
+Thermal equilibrium (steady-state). With fixed boundary conditions, the diffusion eventually stabilizes into a perfect linear temperature gradient.
 
 ## Features
 
