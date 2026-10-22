@@ -16,7 +16,7 @@ fixed_left = True
 fixed_right = True
 
 temperature = np.zeros(N)
-temperature[-1] = 25.0  # initial temperature at the left end (in °C)
+temperature[-1] = 25.0  # initial temperature at the right end (in °C)
 
 def construct_matrix():
     a = np.zeros((N, N))
@@ -94,7 +94,7 @@ ax_check_left.set_frame_on(False) # Removes the cramped bounding box
 
 # Textbox: Left Temp
 ax_box_left = fig.add_axes([ui_x, 0.90, ui_w, 0.04])
-text_box_left = TextBox(ax_box_left, 'Left Temp ', initial='10.0')
+text_box_left = TextBox(ax_box_left, 'Left Temp ', initial='0.0')
 
 # Checkbox: Right Fixed
 ax_check_right = fig.add_axes([ui_x, 0.56, ui_w, 0.25])
@@ -103,7 +103,7 @@ ax_check_right.set_frame_on(False) # Removes the cramped bounding box
 
 # Textbox: Right Temp
 ax_box_right = fig.add_axes([ui_x, 0.74, ui_w, 0.04])
-text_box_right = TextBox(ax_box_right, 'Right Temp ', initial='0.0')
+text_box_right = TextBox(ax_box_right, 'Right Temp ', initial='25.0')
 
 # Textbox: Rod Initial Temp
 ax_box_rod = fig.add_axes([ui_x, 0.58, ui_w, 0.04])
@@ -120,7 +120,7 @@ ax_button_start = fig.add_axes([ui_x, 0.06, ui_w, 0.06])
 start_button = Button(ax_button_start, 'Start Simulation', color='lightgreen', hovercolor='palegreen')
 
 
-materials = {'Generic': 1000, 'Copper': 111, 'Steel': 11.72, 'Glass': 0.34}
+materials = {'Generic': 5000, 'Copper': 111, 'Steel': 11.72, 'Glass': 0.34}
 
 def update(frame):
     global temperature
